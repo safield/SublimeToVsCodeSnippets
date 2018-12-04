@@ -1,0 +1,1 @@
+A python script for converting Sublime Text snippets to Visual Studio Code Snippets
