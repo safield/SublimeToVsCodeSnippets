@@ -130,7 +130,7 @@ vscodeTemplate = """{
 }"""
 
 #----------------------------------------------------------------------------
-# Scope class represents the matching scopes name from sublime and vscode
+# Scope class represents the matching scope names from sublime and vscode
 #----------------------------------------------------------------------------
 
 class Scope:
@@ -175,10 +175,15 @@ class SnippetConvert:
         outStr = outStr.replace("[[scope]]" , self.scope)
         # in vscode every line of the content must start and end in quotes
         contentLines = self.content.split('\n')
+        if len(contentLines) == 0:
+            raise ValueError("Snippet "+self.fileName+".sublime-snippet contains empty content.")
+        if len(contentLines[0]) == 0: # delete an empty first line
+            del contentLines[0]
+        if len(contentLines[-1]) == 0: # delete an empty last line
+            del contentLines[-1]
         contentStr = ""
         for line in contentLines:
-            if len(line) > 0:
-                contentStr = contentStr + '\n\"'+line+'\"'
+            contentStr = contentStr + '\n\"'+line.replace('"' , '\\"')+'\"'
         outStr = outStr.replace("[[body]]" , contentStr)
         outFile = open(self.fileName+".code-snippets" , "w")
         outFile.write(outStr)
@@ -186,7 +191,10 @@ class SnippetConvert:
 
 #----------------------------------------------------------------------------
 
+
+#----------------------------------------------------------------------------
 # main
+#----------------------------------------------------------------------------
 
 # match up the scopes at the top here if you even need more
 scopeList = [
