@@ -120,10 +120,21 @@ from xml.dom import minidom
 # text.xml.xsl
 # source.yaml
 
+vscodeTemplate = """{
+    "[[name]]": {
+        "scope": "[[scope]]",
+        "prefix": "[[prefix]]",
+        "body": [[[body]]],
+        "description": "[[description]]"
+    }
+}"""
+
 #----------------------------------------------------------------------------
 # Scope class represents the matching scopes name from sublime and vscode
 #----------------------------------------------------------------------------
+
 class Scope:
+
     def __init__(self , sublime_name , vscode_name):
         self.sublime_name = sublime_name
         self.vscode_name = vscode_name
@@ -133,20 +144,53 @@ class Scope:
 #----------------------------------------------------------------------------
 
 #----------------------------------------------------------------------------
-# SublimeSnippet
+# SnippetConvert - Read in a sublime format and writes out a vscode format
 #----------------------------------------------------------------------------
-class SublimeSnippet:
-    def __init__(self , xmlfile):
+class SnippetConvert:
+
+    def __init__(self , xmlfile , scopeList):
+        self.fileName = xmlfile.split('.')[0]
         mydoc = minidom.parse(xmlfile)
         self.content = mydoc.getElementsByTagName('content')[0].childNodes[0].wholeText
-        print "Content = "+str(content.wholeText)
+        self.tabTrigger = mydoc.getElementsByTagName('tabTrigger')[0].childNodes[0].wholeText
+        descriptionNodes = mydoc.getElementsByTagName('description')
+        if (len(descriptionNodes) > 0):
+            self.description = descriptionNodes[0].childNodes[0].wholeText
+        else:
+            self.description = self.tabTrigger
+        self.scope = ""
+        scopeNodes = mydoc.getElementsByTagName('scope')
+        if (len(scopeNodes) > 0):
+            for scope in scopeList:
+                if scopeNodes[0].childNodes[0].wholeText == scope.sublime_name:
+                    self.scope = scope.vscode_name
+
+    def __str__(self):
+        return "FileName: "+self.fileName+"\nContent: "+self.content+"\nTabTrigger: "+self.tabTrigger+"\nDescription: "+self.description
+
+    def writeToVsTemplate(self , vsTemplate):
+        outStr = vsTemplate.replace('[[name]]' , self.description)
+        outStr = outStr.replace('[[description]]' , self.description)
+        outStr = outStr.replace("[[prefix]]" , self.tabTrigger)
+        outStr = outStr.replace("[[scope]]" , self.scope)
+        # in vscode every line of the content must start and end in quotes
+        contentLines = self.content.split('\n')
+        contentStr = ""
+        for line in contentLines:
+            if len(line) > 0:
+                contentStr = contentStr + '\n\"'+line+'\"'
+        outStr = outStr.replace("[[body]]" , contentStr)
+        outFile = open(self.fileName+".code-snippets" , "w")
+        outFile.write(outStr)
+        outFile.close()
 
 #----------------------------------------------------------------------------
-
 
 # main
 
+# match up the scopes at the top here if you even need more
 scopeList = [
+              # Scope( sublime_name , vscode_name ) 
                 Scope("source.c++" , "cpp"),
                 Scope("source.java" , "java"),
                 Scope("text.xml" , "xml")
@@ -166,10 +210,15 @@ for file in listOfFiles:
 # construct the sublime snippet classes from the files
 listOfSublimeSnippets = list();
 for file in listOfSublimeSnippetFiles:
-    listOfSublimeSnippets.append(SublimeSnippet(file))
+    listOfSublimeSnippets.append(SnippetConvert(file , scopeList))
 
-for file in listOfSublimeSnippetFiles:
-    print(file)
+# take the sublime snippets and write them out in vscode format
+for snippet in listOfSublimeSnippets:
+    snippet.writeToVsTemplate(vscodeTemplate)
+
+for snippet in listOfSublimeSnippets:
+    print(snippet)
+    print("")
 
 
 
